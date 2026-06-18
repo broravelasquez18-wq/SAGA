@@ -92,6 +92,18 @@ $error = $_GET['error'] ?? '';
         .usuario-nombre { font-size:15px; font-weight:700; color:var(--azul-oscuro); }
         .usuario-tipo { font-size:13px; font-weight:600; color:var(--verde-acento); }
         .btn-logout { padding:12px !important; width:46px; height:46px; justify-content:center; }
+
+        /* Resaltado de ocupación específica */
+        .ocupacion-card.resaltada {
+            outline: 3px solid #f39c12;
+            outline-offset: 3px;
+            box-shadow: 0 0 0 6px rgba(243,156,18,.2), 0 4px 20px rgba(0,0,0,.15);
+            animation: parpadeo 1s ease-in-out 3;
+        }
+        @keyframes parpadeo {
+            0%, 100% { box-shadow: 0 0 0 6px rgba(243,156,18,.2), 0 4px 20px rgba(0,0,0,.15); }
+            50%       { box-shadow: 0 0 0 10px rgba(243,156,18,.4), 0 8px 30px rgba(0,0,0,.2); }
+        }
     </style>
 </head>
 <body>
@@ -140,6 +152,9 @@ $error = $_GET['error'] ?? '';
             </a>
             <a href="instructores_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'instructores_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-person-workspace"></i>Instructores
+            </a>
+            <a href="voceros_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'voceros_admin.php' ? 'class="active"' : ''; ?>>
+                <i class="bi bi-megaphone-fill"></i>Voceros
             </a>
             <a href="ocupaciones_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'ocupaciones_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-calendar-check"></i>Ocupaciones
@@ -300,7 +315,7 @@ $error = $_GET['error'] ?? '';
                     
                     $ambiente_completo = $ocup['piso_nombre'] . ' - ' . $ocup['ambiente_nombre'];
             ?>
-                <div class="ocupacion-card <?php echo $clase_estado; ?>">
+                <div class="ocupacion-card <?php echo $clase_estado; ?>" data-ocupacion-id="<?php echo $ocup['id']; ?>">
                     <div class="ocupacion-header">
                         <span class="ocupacion-estado"><?php echo $icono_estado; ?> <?php echo $texto_estado; ?></span>
                         <span class="ocupacion-jornada"><?php echo $icono_jornada; ?> <?php echo $texto_jornada; ?></span>
@@ -350,6 +365,7 @@ $error = $_GET['error'] ?? '';
             <form action="../../controllers/RegistrarOcupacion.php" method="POST" id="formOcupacion">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="sede_id" value="<?php echo $sede_id; ?>">
+                <input type="hidden" name="return" value="calendario">
 
                 <!-- ⭐ NUEVO: Selector de modo de registro -->
                 <div class="form-grupo">
@@ -520,31 +536,45 @@ $error = $_GET['error'] ?? '';
             }
         }
 
+        const FESTIVOS_CO = [
+            '2025-01-01','2025-01-06','2025-03-24','2025-04-17','2025-04-18','2025-05-01',
+            '2025-06-02','2025-06-23','2025-06-30','2025-07-20','2025-08-07','2025-08-18',
+            '2025-10-13','2025-11-03','2025-11-17','2025-12-08','2025-12-25',
+            '2026-01-01','2026-01-12','2026-03-23','2026-04-02','2026-04-03','2026-05-01',
+            '2026-05-18','2026-06-08','2026-06-15','2026-06-29','2026-07-20','2026-08-07',
+            '2026-08-17','2026-10-12','2026-11-02','2026-11-16','2026-12-08','2026-12-25',
+            '2027-01-01','2027-01-11','2027-03-22','2027-03-25','2027-03-26','2027-05-10',
+            '2027-05-31','2027-06-07','2027-07-05','2027-07-20','2027-08-07','2027-08-16',
+            '2027-10-18','2027-11-01','2027-11-15','2027-12-08','2027-12-25'
+        ];
+        const DIAS_SEMANA = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
         function generarSelectorFechas() {
             const container = document.getElementById('selectorFechas');
             const diasMes = new Date(anioActual, mesActual, 0).getDate();
             const hoy = new Date();
             hoy.setHours(0, 0, 0, 0);
-            
+
             let html = '<div class="dias-grid">';
-            
+
             for(let dia = 1; dia <= diasMes; dia++) {
-                const fecha = new Date(anioActual, mesActual - 1, dia);
-                const fechaStr = `${anioActual}-${String(mesActual).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-                const esPasado = fecha < hoy;
-                
-                if(!esPasado) {
+                const fecha    = new Date(anioActual, mesActual - 1, dia);
+                const fechaStr = `${anioActual}-${String(mesActual).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+                const esPasado  = fecha < hoy;
+                const esDomingo = fecha.getDay() === 0;
+                const esFestivo = FESTIVOS_CO.includes(fechaStr);
+
+                if(!esPasado && !esDomingo && !esFestivo) {
                     html += `
-                        <div class="dia-selector" 
+                        <div class="dia-selector"
                              data-fecha="${fechaStr}"
                              onclick="toggleFecha('${fechaStr}')">
                             <div class="dia-num">${dia}</div>
-                            <div class="dia-mes">${obtenerNombreMes(mesActual)}</div>
-                        </div>
-                    `;
+                            <div class="dia-mes">${DIAS_SEMANA[fecha.getDay()]}</div>
+                        </div>`;
                 }
             }
-            
+
             html += '</div>';
             html += '<div class="contador-seleccion" id="contadorSeleccion">0 días seleccionados</div>';
             container.innerHTML = html;
@@ -599,6 +629,17 @@ $error = $_GET['error'] ?? '';
         modalMenu.addEventListener('click', (e) => {
             if(e.target === modalMenu) modalMenu.classList.remove('active');
         });
+
+        // Resaltar y scroll a la ocupación indicada desde ambientes
+        const params = new URLSearchParams(window.location.search);
+        const resaltarId = params.get('resaltar');
+        if(resaltarId) {
+            const card = document.querySelector(`.ocupacion-card[data-ocupacion-id="${resaltarId}"]`);
+            if(card) {
+                card.classList.add('resaltada');
+                setTimeout(() => card.scrollIntoView({ behavior:'smooth', block:'center' }), 300);
+            }
+        }
     </script>
 </body>
 </html>

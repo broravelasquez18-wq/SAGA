@@ -2,6 +2,8 @@
 session_start();
 require_once "../config/conexion.php";
 require_once "../config/csrf.php";
+require_once "../config/sms.php";
+require_once "../config/sendgrid.php";
 
 if(!isset($_SESSION['id']) || $_SESSION['rol'] != 'admin') {
     header("Location: ../views/home.php");
@@ -27,11 +29,12 @@ if($sede_id <= 0) {
 }
 
 // Obtener datos del formulario
-$cedula = mysqli_real_escape_string($con, trim($_POST['cedula']));
-$nombre = mysqli_real_escape_string($con, trim($_POST['nombre']));
-$apellido = mysqli_real_escape_string($con, trim($_POST['apellido']));
-$email = mysqli_real_escape_string($con, trim($_POST['email']));
-$password = isset($_POST['contrasena']) ? mysqli_real_escape_string($con, $_POST['contrasena']) : '';
+$cedula        = mysqli_real_escape_string($con, trim($_POST['cedula']));
+$nombre        = mysqli_real_escape_string($con, trim($_POST['nombre']));
+$apellido      = mysqli_real_escape_string($con, trim($_POST['apellido']));
+$email         = mysqli_real_escape_string($con, trim($_POST['email']));
+$telefono      = mysqli_real_escape_string($con, trim($_POST['telefono'] ?? ''));
+$password      = isset($_POST['contrasena']) ? mysqli_real_escape_string($con, $_POST['contrasena']) : '';
 $tipo_contrato = mysqli_real_escape_string($con, $_POST['tipo_contrato']);
 
 // ⭐ VALIDACIÓN 1: Email obligatorio
@@ -73,24 +76,30 @@ if($accion == 'crear') {
     
     // Insertar según tipo de contrato
     if($tipo_contrato == 'planta') {
-        $sql = "INSERT INTO usuarios 
-        (cedula, email, nombre, apellido, contraseña, rol, tipo_contrato, fecha_inicio_contrato, fecha_fin_contrato, estado, sede_id)
+        $sql = "INSERT INTO usuarios
+        (cedula, email, nombre, apellido, contraseña, telefono, rol, tipo_contrato, fecha_inicio_contrato, fecha_fin_contrato, estado, sede_id)
         VALUES
-        ('$cedula', '$email', '$nombre', '$apellido', '$password', 'celador', '$tipo_contrato', NULL, NULL, 'activo', $sede_id)";
-        
+        ('$cedula', '$email', '$nombre', '$apellido', '$password', '$telefono', 'celador', '$tipo_contrato', NULL, NULL, 'activo', $sede_id)";
+
     } else if($tipo_contrato == 'contratista') {
         $fecha_inicio = mysqli_real_escape_string($con, $_POST['fecha_inicio_contrato']);
-        $fecha_fin = mysqli_real_escape_string($con, $_POST['fecha_fin_contrato']);
-        
-        $sql = "INSERT INTO usuarios 
-        (cedula, email, nombre, apellido, contraseña, rol, tipo_contrato, fecha_inicio_contrato, fecha_fin_contrato, estado, sede_id)
+        $fecha_fin    = mysqli_real_escape_string($con, $_POST['fecha_fin_contrato']);
+
+        $sql = "INSERT INTO usuarios
+        (cedula, email, nombre, apellido, contraseña, telefono, rol, tipo_contrato, fecha_inicio_contrato, fecha_fin_contrato, estado, sede_id)
         VALUES
-        ('$cedula', '$email', '$nombre', '$apellido', '$password', 'celador', '$tipo_contrato', '$fecha_inicio', '$fecha_fin', 'activo', $sede_id)";
+        ('$cedula', '$email', '$nombre', '$apellido', '$password', '$telefono', 'celador', '$tipo_contrato', '$fecha_inicio', '$fecha_fin', 'activo', $sede_id)";
     }
     
     $resultado = mysqli_query($con, $sql);
-    
+
     if($resultado){
+        if(!empty($telefono)) {
+            $numero  = '+57' . preg_replace('/\D/', '', $telefono);
+            $mensaje = "Bienvenido/a a SAGA, $nombre $apellido. Tu cuenta de Celador ha sido creada. Ya puedes iniciar sesion con tu email.";
+            enviarSMS($numero, $mensaje);
+        }
+        enviarEmail($email, "$nombre $apellido", 'Bienvenido/a a SAGA', emailBienvenida($nombre, $apellido, 'celador'));
         header("Location: ../views/admin/Celadores_admin.php?sede_id=$sede_id&msg=celador_creado");
     } else {
         header("Location: ../views/admin/Celadores_admin.php?sede_id=$sede_id&error=create_failed");
@@ -125,25 +134,27 @@ else if($accion == 'editar') {
     
     // Actualizar según tipo de contrato
     if($tipo_contrato == 'planta') {
-        $sql = "UPDATE usuarios SET 
+        $sql = "UPDATE usuarios SET
         cedula = '$cedula',
         email = '$email',
         nombre = '$nombre',
         apellido = '$apellido',
+        telefono = '$telefono',
         tipo_contrato = '$tipo_contrato',
         fecha_inicio_contrato = NULL,
         fecha_fin_contrato = NULL
         WHERE id = $celador_id";
-        
+
     } else if($tipo_contrato == 'contratista') {
         $fecha_inicio = mysqli_real_escape_string($con, $_POST['fecha_inicio_contrato']);
-        $fecha_fin = mysqli_real_escape_string($con, $_POST['fecha_fin_contrato']);
-        
-        $sql = "UPDATE usuarios SET 
+        $fecha_fin    = mysqli_real_escape_string($con, $_POST['fecha_fin_contrato']);
+
+        $sql = "UPDATE usuarios SET
         cedula = '$cedula',
         email = '$email',
         nombre = '$nombre',
         apellido = '$apellido',
+        telefono = '$telefono',
         tipo_contrato = '$tipo_contrato',
         fecha_inicio_contrato = '$fecha_inicio',
         fecha_fin_contrato = '$fecha_fin'

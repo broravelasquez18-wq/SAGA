@@ -521,6 +521,8 @@ body {
     text-decoration: none;
     transition: all 0.3s ease;
     white-space: nowrap;
+    cursor: pointer;
+    font-family: inherit;
 }
 
 .btn-cancelar-ocupacion:hover {
@@ -767,6 +769,8 @@ body {
     transition: all 0.3s ease;
     white-space: nowrap;
     display: inline-block;
+    cursor: pointer;
+    font-family: inherit;
 }
 
 .btn-cancelar-small:hover {

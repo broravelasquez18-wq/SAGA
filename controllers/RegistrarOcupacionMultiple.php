@@ -2,6 +2,7 @@
 session_start();
 require_once "../config/conexion.php";
 require_once "../config/csrf.php";
+require_once "../config/sendgrid.php";
 
 $con = conexion();
 
@@ -13,20 +14,22 @@ if($_SERVER['REQUEST_METHOD'] != 'POST') {
 
 csrf_validate();
 
-// Verificar sesión de instructor
-if(!isset($_SESSION['id']) || $_SESSION['rol'] != 'instructor') {
+// Verificar sesión de instructor o vocero
+if(!isset($_SESSION['id']) || !in_array($_SESSION['rol'], ['instructor', 'vocero'])) {
     header("Location: ../views/home.php");
     exit();
 }
 
+$ruta_base = $_SESSION['rol'] == 'vocero'
+    ? "../views/vocero/calendario_vocero.php"
+    : "../views/instructor/calendario_instructor.php";
+
 $instructor_id = $_SESSION['id'];
 
 // Obtener datos del formulario
-$ambiente_id = intval($_POST['ambiente_id'] ?? 0);
-$jornada     = mysqli_real_escape_string($con, $_POST['jornada'] ?? '');
+$ambiente_id   = intval($_POST['ambiente_id'] ?? 0);
+$jornada       = mysqli_real_escape_string($con, $_POST['jornada'] ?? '');
 $observaciones = mysqli_real_escape_string($con, $_POST['observaciones'] ?? '');
-
-$ruta_base = "../views/instructor/calendario_instructor.php";
 
 // Validar ambiente
 if($ambiente_id <= 0) {
@@ -115,6 +118,8 @@ $jornada_pasada_count = 0;
 $fecha_pasada_count   = 0;
 $primer_mes  = null;
 $primer_anio = null;
+
+mysqli_begin_transaction($con);
 
 foreach($fechas_a_registrar as $fecha) {
     $fecha = trim($fecha);
@@ -211,10 +216,32 @@ foreach($fechas_a_registrar as $fecha) {
     }
 }
 
+if($registros_exitosos > 0) {
+    mysqli_commit($con);
+
+    // Notificar al instructor/vocero por email
+    $uq = mysqli_query($con, "SELECT nombre, apellido, email FROM usuarios WHERE id = $instructor_id");
+    $aq = mysqli_query($con, "SELECT nombre FROM ambientes WHERE id = $ambiente_id");
+    if($ur = mysqli_fetch_assoc($uq)) {
+        $amb_nombre    = ($ar = mysqli_fetch_assoc($aq)) ? $ar['nombre'] : '';
+        $primera_fecha = ($primer_anio && $primer_mes)
+            ? sprintf('%04d-%02d-%02d', $primer_anio, $primer_mes, intval($parts[2] ?? 1))
+            : date('Y-m-d');
+        enviarEmail(
+            $ur['email'],
+            $ur['nombre'] . ' ' . $ur['apellido'],
+            'Ocupación registrada - SAGA',
+            emailNuevaOcupacion($ur['nombre'], $ur['apellido'], $amb_nombre, $primera_fecha, $jornada, $hora_inicio, $hora_fin, $registros_exitosos)
+        );
+    }
+} else {
+    mysqli_rollback($con);
+}
+
 mysqli_close($con);
 
 // Redirigir con resultado
-$params = "?mes=$primer_mes&anio=$primer_anio";
+$params = "?mes=" . ($primer_mes ?? date('n')) . "&anio=" . ($primer_anio ?? date('Y'));
 
 if($registros_exitosos > 0) {
     header("Location: $ruta_base{$params}&msg=exito&registrados=$registros_exitosos");

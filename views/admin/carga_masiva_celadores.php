@@ -93,6 +93,7 @@ $fallidos = intval($_GET['fallidos'] ?? 0);
             <h3 class="menu-titulo">GESTIÓN</h3>
             <a href="Celadores_admin.php?sede_id=<?php echo $sede_id; ?>" class="active"><i class="bi bi-shield-check"></i>Celadores</a>
             <a href="instructores_admin.php?sede_id=<?php echo $sede_id; ?>"><i class="bi bi-person-workspace"></i>Instructores</a>
+            <a href="voceros_admin.php?sede_id=<?php echo $sede_id; ?>"><i class="bi bi-megaphone-fill"></i>Voceros</a>
             <a href="ocupaciones_admin.php?sede_id=<?php echo $sede_id; ?>"><i class="bi bi-calendar-check"></i>Ocupaciones</a>
             <a href="calendario_ocupaciones.php?sede_id=<?php echo $sede_id; ?>"><i class="bi bi-calendar3"></i>Calendario</a>
             <a href="reportes_admin.php?sede_id=<?php echo $sede_id; ?>"><i class="bi bi-file-earmark-bar-graph"></i>Reportes</a>

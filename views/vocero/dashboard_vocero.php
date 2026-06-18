@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Verificar sesión de instructor
-if(!isset($_SESSION['id']) || $_SESSION['rol'] != 'instructor') {
+// Verificar sesión de vocero
+if(!isset($_SESSION['id']) || $_SESSION['rol'] != 'vocero') {
     header("Location: ../../views/home.php");
     exit();
 }
@@ -11,14 +11,14 @@ require_once "../../config/conexion.php";
 require_once "../../config/csrf.php";
 $con = conexion();
 
-$instructor_id = $_SESSION['id'];
-$instructor_nombre = $_SESSION['nombre'];
-$instructor_apellido = $_SESSION['apellido'];
+$vocero_id = $_SESSION['id'];
+$vocero_nombre = $_SESSION['nombre'];
+$vocero_apellido = $_SESSION['apellido'];
 
 // Datos para el modal de nueva ocupación
-$instructor_tipo_contrato = $_SESSION['tipo_contrato'] ?? 'planta';
-$instructor_sede_id       = $_SESSION['sede_id'] ?? 0;
-if($instructor_tipo_contrato == 'contratista') {
+$vocero_tipo_contrato = $_SESSION['tipo_contrato'] ?? 'planta';
+$vocero_sede_id       = $_SESSION['sede_id'] ?? 0;
+if($vocero_tipo_contrato == 'contratista') {
     $sedes_result     = mysqli_query($con, "SELECT id, nombre, ciudad FROM sedes ORDER BY nombre ASC");
     $ambientes_result = null;
 } else {
@@ -26,46 +26,46 @@ if($instructor_tipo_contrato == 'contratista') {
     $ambientes_result = mysqli_query($con, "SELECT a.id, a.nombre, p.nombre AS piso_nombre
                                             FROM ambientes a
                                             LEFT JOIN pisos p ON a.piso_id = p.id
-                                            WHERE p.sede_id = $instructor_sede_id
+                                            WHERE p.sede_id = $vocero_sede_id
                                             ORDER BY p.nombre, a.nombre");
 }
 
 // Estadísticas
-$stats_total = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion WHERE usuario_id = $instructor_id"
+$stats_total = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion WHERE usuario_id = $vocero_id"
 ))['total'];
 
-$stats_activas = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion 
-     WHERE usuario_id = $instructor_id 
-     AND estado = 'ocupado' 
-     AND fecha_inicio <= NOW() 
+$stats_activas = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion
+     WHERE usuario_id = $vocero_id
+     AND estado = 'ocupado'
+     AND fecha_inicio <= NOW()
      AND fecha_fin >= NOW()"
 ))['total'];
 
-$stats_proximas = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion 
-     WHERE usuario_id = $instructor_id 
-     AND estado = 'ocupado' 
+$stats_proximas = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion
+     WHERE usuario_id = $vocero_id
+     AND estado = 'ocupado'
      AND fecha_inicio > NOW()"
 ))['total'];
 
-$stats_finalizadas = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion 
-     WHERE usuario_id = $instructor_id 
+$stats_finalizadas = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion
+     WHERE usuario_id = $vocero_id
      AND estado = 'finalizado'"
 ))['total'];
 
 // Ocupación actual (si existe)
-$ocupacion_actual = mysqli_query($con, 
+$ocupacion_actual = mysqli_query($con,
     "SELECT h.*, a.nombre as ambiente, p.nombre as piso, s.nombre as sede
      FROM historial_ocupacion h
      INNER JOIN ambientes a ON h.ambiente_id = a.id
      INNER JOIN pisos p ON a.piso_id = p.id
      INNER JOIN sedes s ON p.sede_id = s.id
-     WHERE h.usuario_id = $instructor_id 
+     WHERE h.usuario_id = $vocero_id
      AND h.estado = 'ocupado'
-     AND h.fecha_inicio <= NOW() 
+     AND h.fecha_inicio <= NOW()
      AND h.fecha_fin >= NOW()
      LIMIT 1"
 );
@@ -76,13 +76,13 @@ if($tiene_ocupacion_actual) {
 }
 
 // Próximas ocupaciones (las 6 más cercanas)
-$proximas_ocupaciones = mysqli_query($con, 
+$proximas_ocupaciones = mysqli_query($con,
     "SELECT h.*, a.nombre as ambiente, p.nombre as piso, s.nombre as sede
      FROM historial_ocupacion h
      INNER JOIN ambientes a ON h.ambiente_id = a.id
      INNER JOIN pisos p ON a.piso_id = p.id
      INNER JOIN sedes s ON p.sede_id = s.id
-     WHERE h.usuario_id = $instructor_id 
+     WHERE h.usuario_id = $vocero_id
      AND h.estado = 'ocupado'
      AND h.fecha_inicio > NOW()
      ORDER BY h.fecha_inicio ASC
@@ -98,7 +98,7 @@ $proximas_ocupaciones = mysqli_query($con,
     <link rel="stylesheet" href="../../assets/css/dashboard_instructor.css">
     <link rel="stylesheet" href="../../assets/css/calendario_ocupaciones.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <title>Dashboard Instructor - SAGA</title>
+    <title>Dashboard Vocero - SAGA</title>
 </head>
 <body>
     <!-- Header -->
@@ -113,8 +113,8 @@ $proximas_ocupaciones = mysqli_query($con,
 
         <div class="header-info">
             <div class="usuario-info">
-                <span class="usuario-nombre"><?php echo $instructor_nombre . ' ' . $instructor_apellido; ?></span>
-                <span class="usuario-tipo">Instructor</span>
+                <span class="usuario-nombre"><?php echo $vocero_nombre . ' ' . $vocero_apellido; ?></span>
+                <span class="usuario-tipo">Vocero</span>
             </div>
             <a class="btn-logout" href="../../controllers/logout.php">
                 <i class="bi bi-box-arrow-right"></i>
@@ -127,13 +127,13 @@ $proximas_ocupaciones = mysqli_query($con,
     <div class="modal-menu" id="modalMenu">
         <div class="sidebar">
             <h3 class="menu-titulo">PRINCIPAL</h3>
-            <a href="dashboard_instructor.php" <?php echo $pagina_actual == 'dashboard_instructor.php' ? 'class="active"' : ''; ?>>
+            <a href="dashboard_vocero.php" <?php echo $pagina_actual == 'dashboard_vocero.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-bar-chart-fill"></i>Dashboard
             </a>
-            <a href="calendario_instructor.php" <?php echo $pagina_actual == 'calendario_instructor.php' ? 'class="active"' : ''; ?>>
+            <a href="calendario_vocero.php" <?php echo $pagina_actual == 'calendario_vocero.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-calendar3"></i>Calendario
             </a>
-            <a href="mis_ocupaciones_instructor.php" <?php echo $pagina_actual == 'mis_ocupaciones_instructor.php' ? 'class="active"' : ''; ?>>
+            <a href="mis_ocupaciones_vocero.php" <?php echo $pagina_actual == 'mis_ocupaciones_vocero.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-clock-history"></i>Mis Ocupaciones
             </a>
         </div>
@@ -142,11 +142,11 @@ $proximas_ocupaciones = mysqli_query($con,
     <!-- Bienvenida -->
     <div class="bienvenida">
         <div class="bienvenida-contenido">
-            <h1>¡Hola, <?php echo $instructor_nombre; ?>! 👋</h1>
-            <p>Gestiona tus ocupaciones de ambientes</p>
+            <h1>¡Hola, <?php echo $vocero_nombre; ?>! 👋</h1>
+            <p>Gestiona tus ambientes como vocero</p>
         </div>
         <div class="bienvenida-botones">
-            <a href="calendario_instructor.php" class="btn-calendario">
+            <a href="calendario_vocero.php" class="btn-calendario">
                 <i class="bi bi-calendar-event"></i> Ver Calendario
             </a>
             <button class="btn-agendar-grande" onclick="abrirModalNuevaOcupacion()">
@@ -163,9 +163,9 @@ $proximas_ocupaciones = mysqli_query($con,
                 <div class="ocupacion-actual-info">
                     <h3>Ocupación Activa en este momento</h3>
                     <p>
-                        <?php echo $ocu_actual['ambiente']; ?> - 
+                        <?php echo $ocu_actual['ambiente']; ?> -
                         <?php echo $ocu_actual['sede']; ?> (<?php echo $ocu_actual['piso']; ?>)
-                        • <?php echo date('H:i', strtotime($ocu_actual['fecha_inicio'])); ?> - 
+                        • <?php echo date('H:i', strtotime($ocu_actual['fecha_inicio'])); ?> -
                         <?php echo date('H:i', strtotime($ocu_actual['fecha_fin'])); ?>
                     </p>
                 </div>
@@ -226,7 +226,7 @@ $proximas_ocupaciones = mysqli_query($con,
                                     📍 <?php echo $ocu['sede']; ?> - <?php echo $ocu['piso']; ?>
                                 </p>
                                 <p class="ocupacion-horario">
-                                    🕐 <?php echo date('H:i', strtotime($ocu['fecha_inicio'])); ?> - 
+                                    🕐 <?php echo date('H:i', strtotime($ocu['fecha_inicio'])); ?> -
                                     <?php echo date('H:i', strtotime($ocu['fecha_fin'])); ?>
                                     (<?php echo ucfirst($ocu['jornada']); ?>)
                                 </p>
@@ -252,7 +252,7 @@ $proximas_ocupaciones = mysqli_query($con,
                 </div>
 
                 <div style="text-align: center; margin-top: 24px;">
-                    <a href="mis_ocupaciones_instructor.php" class="btn-agendar">
+                    <a href="mis_ocupaciones_vocero.php" class="btn-agendar">
                         <i class="bi bi-clipboard"></i> Ver Todas mis Ocupaciones
                     </a>
                 </div>
@@ -314,7 +314,7 @@ $proximas_ocupaciones = mysqli_query($con,
                     </div>
                 </div>
 
-                <?php if($instructor_tipo_contrato == 'contratista'): ?>
+                <?php if($vocero_tipo_contrato == 'contratista'): ?>
                 <div class="form-grupo">
                     <label>Sede *</label>
                     <select id="sedeSelect" onchange="cargarAmbientesPorSede(this.value)">
@@ -397,6 +397,8 @@ $proximas_ocupaciones = mysqli_query($con,
         let fechasSeleccionadas = [];
         const mesActual  = <?php echo date('n'); ?>;
         const anioActual = <?php echo date('Y'); ?>;
+
+        const voceroNombre = <?php echo json_encode($vocero_nombre); ?>;
 
         function abrirModalNuevaOcupacion() {
             const hoy = new Date();

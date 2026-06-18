@@ -33,6 +33,8 @@ function abrirModal() {
     document.getElementById('celadorNombre').value = '';
     document.getElementById('celadorApellido').value = '';
     document.getElementById('celadorCedula').value = '';
+    document.getElementById('celadorEmail').value = '';
+    document.getElementById('celadorTelefono').value = '';
     document.getElementById('celadorContrasena').value = '';
     document.getElementById('celadorContrato').value = '';
     document.getElementById('celadorFechaInicio').value = '';
@@ -63,6 +65,8 @@ function editar(id) {
                 document.getElementById('celadorNombre').value = data.celador.nombre;
                 document.getElementById('celadorApellido').value = data.celador.apellido;
                 document.getElementById('celadorCedula').value = data.celador.cedula;
+                document.getElementById('celadorEmail').value = data.celador.email || '';
+                document.getElementById('celadorTelefono').value = data.celador.telefono || '';
                 document.getElementById('celadorContrato').value = data.celador.tipo_contrato;
                 
                 if(data.celador.tipo_contrato == 'contratista') {
@@ -158,6 +162,20 @@ function ordenar() {
     });
 
     cards.forEach(card => grid.appendChild(card));
+}
+
+// Validar formulario antes de enviar
+const formCelador = document.getElementById('formCelador');
+if(formCelador) {
+    formCelador.addEventListener('submit', function(e) {
+        const accion = document.getElementById('accion').value;
+        const clave  = document.getElementById('celadorContrasena').value.trim();
+        if(accion === 'crear' && clave === '') {
+            e.preventDefault();
+            alert('La contraseña es obligatoria. Por favor ingresala antes de guardar.');
+            document.getElementById('celadorContrasena').focus();
+        }
+    });
 }
 
 // Cerrar modal

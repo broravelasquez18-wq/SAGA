@@ -530,7 +530,7 @@ body {
 
 .acciones {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 20px;
 }
 
@@ -820,6 +820,10 @@ body {
     .acciones {
         grid-template-columns: repeat(2, 1fr);
         gap: 12px;
+    }
+
+    .acciones {
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .accion {

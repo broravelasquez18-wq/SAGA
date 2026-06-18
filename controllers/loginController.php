@@ -27,8 +27,11 @@ if(mysqli_num_rows($resultado) > 0){
 
     $usuario = mysqli_fetch_assoc($resultado);
 
-    // Verificar contraseña primero
-    if($password != $usuario['contraseña']){
+    // Verificar contraseña (soporta hash bcrypt y texto plano legacy)
+    $hash = $usuario['contraseña'];
+    $password_ok = password_verify($password, $hash) || ($password === $hash);
+
+    if(!$password_ok){
         header("Location: ../views/home.php?error=credenciales");
         exit();
     }
@@ -39,8 +42,7 @@ if(mysqli_num_rows($resultado) > 0){
         exit();
     }
 
-    // Contraseña correcta y usuario activo
-    if($password == $usuario['contraseña']){
+    if($password_ok){
 
         // Guardar en sesión
         $_SESSION['id'] = $usuario['id'];
@@ -59,8 +61,17 @@ if(mysqli_num_rows($resultado) > 0){
         elseif($usuario['rol'] == 'celador') {
             $_SESSION['acceso_sedes'] = 'una';
             $_SESSION['puede_cambiar_sede'] = false;
-        } 
+        }
         elseif($usuario['rol'] == 'instructor') {
+            if($usuario['tipo_contrato'] == 'planta') {
+                $_SESSION['acceso_sedes'] = 'una';
+                $_SESSION['puede_cambiar_sede'] = false;
+            } else {
+                $_SESSION['acceso_sedes'] = 'todas';
+                $_SESSION['puede_cambiar_sede'] = true;
+            }
+        }
+        elseif($usuario['rol'] == 'vocero') {
             if($usuario['tipo_contrato'] == 'planta') {
                 $_SESSION['acceso_sedes'] = 'una';
                 $_SESSION['puede_cambiar_sede'] = false;
@@ -74,7 +85,7 @@ if(mysqli_num_rows($resultado) > 0){
         if($usuario['rol'] == 'admin'){
             header("Location: ../views/admin/index_sedes.php");
             exit();
-        } 
+        }
         elseif($usuario['rol'] == 'celador'){
             header("Location: ../views/celador/dashboard_celador.php");
             exit();
@@ -83,11 +94,11 @@ if(mysqli_num_rows($resultado) > 0){
             header("Location: ../views/instructor/dashboard_instructor.php");
             exit();
         }
+        elseif($usuario['rol'] == 'vocero'){
+            header("Location: ../views/vocero/dashboard_vocero.php");
+            exit();
+        }
 
-    } else {
-        // ⭐ CONTRASEÑA INCORRECTA - Redirigir a views/home.php
-        header("Location: ../views/home.php?error=credenciales");
-        exit();
     }
 
 } else {

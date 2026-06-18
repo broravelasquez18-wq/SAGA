@@ -109,6 +109,9 @@ $stats_por_vencer = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total 
             <a href="instructores_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'instructores_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-person-workspace"></i>Instructores
             </a>
+            <a href="voceros_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'voceros_admin.php' ? 'class="active"' : ''; ?>>
+                <i class="bi bi-megaphone-fill"></i>Voceros
+            </a>
             <a href="ocupaciones_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'ocupaciones_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-calendar-check"></i>Ocupaciones
             </a>
@@ -392,7 +395,7 @@ $stats_por_vencer = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total 
             
             <h2 id="modalTitulo">Nuevo Celador</h2>
 
-            <form action="../../controllers/CrearCelador.php" method="POST">
+            <form action="../../controllers/CrearCelador.php" method="POST" id="formCelador">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="accion" id="accion" value="crear">
                 <input type="hidden" name="celador_id" id="celadorId">
@@ -424,9 +427,15 @@ $stats_por_vencer = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total 
                     </div>
 
                     <div class="form-grupo">
+                        <label>Teléfono / Celular</label>
+                        <input type="tel" name="telefono" id="celadorTelefono" placeholder="Ej: 3001234567">
+                        <small class="form-ayuda">Sin prefijo +57. Requerido para notificaciones.</small>
+                    </div>
+
+                    <div class="form-grupo">
                         <label>Contraseña *</label>
-                        <input type="password" name="contrasena" id="celadorContrasena" placeholder="Mínimo 6 caracteres" minlength="6">
-                        <small class="form-ayuda" id="contrasenaAyuda">Deja vacío para mantener la contraseña actual</small>
+                        <input type="password" name="contrasena" id="celadorContrasena" placeholder="Mínimo 6 caracteres" minlength="6" required>
+                        <small class="form-ayuda" id="contrasenaAyuda" style="display:none">Deja vacío para mantener la contraseña actual</small>
                     </div>
                 </div>
 

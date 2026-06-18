@@ -2,6 +2,7 @@
 session_start();
 require_once "../config/conexion.php";
 require_once "../config/csrf.php";
+require_once "../config/sendgrid.php";
 
 $con = conexion();
 
@@ -139,6 +140,7 @@ $jornada_pasada_count = 0;
 $fecha_pasada_count   = 0;
 $primer_mes  = null;
 $primer_anio = null;
+$primer_dia  = null;
 
 foreach($fechas_a_registrar as $fecha) {
     $fecha = trim($fecha);
@@ -147,6 +149,7 @@ foreach($fechas_a_registrar as $fecha) {
         $fecha_parts = explode('-', $fecha);
         $primer_anio = $fecha_parts[0];
         $primer_mes  = intval($fecha_parts[1]);
+        $primer_dia  = intval($fecha_parts[2]);
     }
 
     // Validar fecha no sea pasada
@@ -221,17 +224,32 @@ foreach($fechas_a_registrar as $fecha) {
     }
 }
 
-mysqli_close($con); 
+// Notificar al usuario asignado si hubo registros exitosos
+if($registros_exitosos > 0) {
+    $uq = mysqli_query($con, "SELECT nombre, apellido, email FROM usuarios WHERE id = $usuario_id");
+    $aq = mysqli_query($con, "SELECT nombre FROM ambientes WHERE id = $ambiente_id");
+    if($ur = mysqli_fetch_assoc($uq)) {
+        $amb_nombre = ($ar = mysqli_fetch_assoc($aq)) ? $ar['nombre'] : '';
+        $primera_fecha = sprintf('%04d-%02d-%02d', $primer_anio, $primer_mes, $primer_dia);
+        enviarEmail(
+            $ur['email'],
+            $ur['nombre'] . ' ' . $ur['apellido'],
+            'Nueva ocupación registrada - SAGA',
+            emailNuevaOcupacion($ur['nombre'], $ur['apellido'], $amb_nombre, $primera_fecha, $jornada_bd, $hora_inicio, $hora_fin, $registros_exitosos)
+        );
+    }
+}
+
+mysqli_close($con);
 
 // REDIRIGIR CON MENSAJE
 if($registros_exitosos > 0) {
     if($return == 'calendario') {
-        header("Location: $ruta_base?sede_id=$sede_id&msg=ocupaciones_multiples&total=$registros_exitosos&mes=$primer_mes&anio=$primer_anio");
+        header("Location: $ruta_base?sede_id=$sede_id&msg=ocupaciones_multiples&total=$registros_exitosos&mes=$primer_mes&anio=$primer_anio&dia=$primer_dia");
     } else {
         header("Location: $ruta_base?sede_id=$sede_id&msg=ocupaciones_multiples&total=$registros_exitosos");
     }
 } else {
-    // Determinar el error más específico
     if($fecha_pasada_count > 0 && $fecha_pasada_count == $registros_fallidos) {
         $error_code = 'fecha_pasada';
     } elseif($jornada_pasada_count > 0 && $jornada_pasada_count == $registros_fallidos) {
@@ -241,7 +259,7 @@ if($registros_exitosos > 0) {
     }
 
     if($return == 'calendario') {
-        header("Location: $ruta_base?sede_id=$sede_id&error=$error_code&mes=$primer_mes&anio=$primer_anio");
+        header("Location: $ruta_base?sede_id=$sede_id&error=$error_code&mes=$primer_mes&anio=$primer_anio&dia=$primer_dia");
     } else {
         header("Location: $ruta_base?sede_id=$sede_id&error=$error_code");
     }

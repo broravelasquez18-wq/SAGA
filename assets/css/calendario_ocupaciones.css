@@ -646,6 +646,11 @@ body {
     border-top: 1px solid var(--borde);
 }
 
+.ocupacion-footer form {
+    margin: 0;
+    padding: 0;
+}
+
 .btn-finalizar {
     background: var(--verde-acento);
     color: var(--blanco);
@@ -656,6 +661,9 @@ body {
     font-size: 14px;
     display: inline-block;
     transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
 }
 
 .btn-finalizar:hover {

@@ -1,0 +1,18 @@
+# Credenciales y configuración sensible
+config/sendgrid.php
+config/sendgrid_hosting.php
+config/sms.php
+
+# Claude Code
+.claude/
+
+# Archivos de migración temporales
+migrate_recordatorio.php
+migrate_vocero_rol.php
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

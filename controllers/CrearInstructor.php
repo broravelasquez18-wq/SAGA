@@ -2,6 +2,8 @@
 session_start();
 require_once "../config/conexion.php";
 require_once "../config/csrf.php";
+require_once "../config/sms.php";
+require_once "../config/sendgrid.php";
 
 if(!isset($_SESSION['id']) || $_SESSION['rol'] != 'admin') {
     header("Location: ../views/home.php");
@@ -31,6 +33,7 @@ $cedula = mysqli_real_escape_string($con, trim($_POST['cedula']));
 $nombre = mysqli_real_escape_string($con, trim($_POST['nombre']));
 $apellido = mysqli_real_escape_string($con, trim($_POST['apellido']));
 $email = mysqli_real_escape_string($con, trim($_POST['email']));
+$telefono = mysqli_real_escape_string($con, trim($_POST['telefono'] ?? ''));
 $nivel_estudio = mysqli_real_escape_string($con, $_POST['nivel_estudio']);
 $password = isset($_POST['contrasena']) ? mysqli_real_escape_string($con, $_POST['contrasena']) : '';
 $tipo_contrato = mysqli_real_escape_string($con, $_POST['tipo_contrato']);
@@ -74,26 +77,30 @@ if($accion == 'crear') {
     
     // Insertar según tipo de contrato
     if($tipo_contrato == 'planta') {
-        // Planta: con sede_id
-        $sql = "INSERT INTO usuarios 
-        (cedula, email, nombre, apellido, nivel_estudio, contraseña, rol, tipo_contrato, fecha_inicio_contrato, fecha_fin_contrato, estado, sede_id)
+        $sql = "INSERT INTO usuarios
+        (cedula, email, nombre, apellido, telefono, nivel_estudio, contraseña, rol, tipo_contrato, fecha_inicio_contrato, fecha_fin_contrato, estado, sede_id)
         VALUES
-        ('$cedula', '$email', '$nombre', '$apellido', '$nivel_estudio', '$password', 'instructor', '$tipo_contrato', NULL, NULL, 'activo', $sede_id)";
-        
+        ('$cedula', '$email', '$nombre', '$apellido', '$telefono', '$nivel_estudio', '$password', 'instructor', '$tipo_contrato', NULL, NULL, 'activo', $sede_id)";
+
     } else if($tipo_contrato == 'contratista') {
-        // Contratista: sede_id NULL (acceso a todas)
         $fecha_inicio = mysqli_real_escape_string($con, $_POST['fecha_inicio_contrato']);
         $fecha_fin = mysqli_real_escape_string($con, $_POST['fecha_fin_contrato']);
-        
-        $sql = "INSERT INTO usuarios 
-        (cedula, email, nombre, apellido, nivel_estudio, contraseña, rol, tipo_contrato, fecha_inicio_contrato, fecha_fin_contrato, estado, sede_id)
+
+        $sql = "INSERT INTO usuarios
+        (cedula, email, nombre, apellido, telefono, nivel_estudio, contraseña, rol, tipo_contrato, fecha_inicio_contrato, fecha_fin_contrato, estado, sede_id)
         VALUES
-        ('$cedula', '$email', '$nombre', '$apellido', '$nivel_estudio', '$password', 'instructor', '$tipo_contrato', '$fecha_inicio', '$fecha_fin', 'activo', NULL)";
+        ('$cedula', '$email', '$nombre', '$apellido', '$telefono', '$nivel_estudio', '$password', 'instructor', '$tipo_contrato', '$fecha_inicio', '$fecha_fin', 'activo', NULL)";
     }
     
     $resultado = mysqli_query($con, $sql);
-    
+
     if($resultado){
+        if(!empty($telefono)) {
+            $numero  = '+57' . preg_replace('/\D/', '', $telefono);
+            $mensaje = "Bienvenido/a a SAGA, $nombre $apellido. Tu cuenta de Instructor ha sido creada. Ya puedes iniciar sesion con tu email.";
+            enviarSMS($numero, $mensaje);
+        }
+        enviarEmail($email, "$nombre $apellido", 'Bienvenido/a a SAGA', emailBienvenida($nombre, $apellido, 'instructor'));
         header("Location: ../views/admin/instructores_admin.php?sede_id=$sede_id&msg=instructor_creado");
     } else {
         header("Location: ../views/admin/instructores_admin.php?sede_id=$sede_id&error=create_failed");
@@ -128,29 +135,29 @@ else if($accion == 'editar') {
     
     // Actualizar según tipo de contrato
     if($tipo_contrato == 'planta') {
-        // Planta: con sede_id
-        $sql = "UPDATE usuarios SET 
+        $sql = "UPDATE usuarios SET
         cedula = '$cedula',
         email = '$email',
         nombre = '$nombre',
         apellido = '$apellido',
+        telefono = '$telefono',
         nivel_estudio = '$nivel_estudio',
         tipo_contrato = '$tipo_contrato',
         fecha_inicio_contrato = NULL,
         fecha_fin_contrato = NULL,
         sede_id = $sede_id
         WHERE id = $instructor_id";
-        
+
     } else if($tipo_contrato == 'contratista') {
-        // Contratista: sede_id NULL (acceso a todas)
         $fecha_inicio = mysqli_real_escape_string($con, $_POST['fecha_inicio_contrato']);
         $fecha_fin = mysqli_real_escape_string($con, $_POST['fecha_fin_contrato']);
-        
-        $sql = "UPDATE usuarios SET 
+
+        $sql = "UPDATE usuarios SET
         cedula = '$cedula',
         email = '$email',
         nombre = '$nombre',
         apellido = '$apellido',
+        telefono = '$telefono',
         nivel_estudio = '$nivel_estudio',
         tipo_contrato = '$tipo_contrato',
         fecha_inicio_contrato = '$fecha_inicio',

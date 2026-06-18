@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-// Verificar sesión de instructor
-if(!isset($_SESSION['id']) || $_SESSION['rol'] != 'instructor') {
+// Verificar sesión de vocero
+if(!isset($_SESSION['id']) || $_SESSION['rol'] != 'vocero') {
     header("Location: ../../views/home.php");
     exit();
 }
@@ -11,14 +11,14 @@ require_once "../../config/conexion.php";
 require_once "../../config/csrf.php";
 $con = conexion();
 
-$instructor_id = $_SESSION['id'];
-$instructor_nombre = $_SESSION['nombre'];
+$vocero_id = $_SESSION['id'];
+$vocero_nombre = $_SESSION['nombre'];
 
 // Obtener filtro de estado
 $filtro = isset($_GET['filtro']) ? $_GET['filtro'] : 'todos';
 
 // Query base
-$query_base = "SELECT 
+$query_base = "SELECT
     h.id,
     h.fecha_inicio,
     h.fecha_fin,
@@ -32,7 +32,7 @@ FROM historial_ocupacion h
 INNER JOIN ambientes a ON h.ambiente_id = a.id
 INNER JOIN pisos p ON a.piso_id = p.id
 INNER JOIN sedes s ON p.sede_id = s.id
-WHERE h.usuario_id = $instructor_id";
+WHERE h.usuario_id = $vocero_id";
 
 // Aplicar filtro
 switch($filtro) {
@@ -56,34 +56,34 @@ $ocupaciones = mysqli_query($con, $query_base);
 $total_registros = mysqli_num_rows($ocupaciones);
 
 // Estadísticas
-$stats_total = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion WHERE usuario_id = $instructor_id"
+$stats_total = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion WHERE usuario_id = $vocero_id"
 ))['total'];
 
-$stats_activos = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion 
-     WHERE usuario_id = $instructor_id 
-     AND estado = 'ocupado' 
-     AND fecha_inicio <= NOW() 
+$stats_activos = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion
+     WHERE usuario_id = $vocero_id
+     AND estado = 'ocupado'
+     AND fecha_inicio <= NOW()
      AND fecha_fin >= NOW()"
 ))['total'];
 
-$stats_proximos = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion 
-     WHERE usuario_id = $instructor_id 
-     AND estado = 'ocupado' 
+$stats_proximos = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion
+     WHERE usuario_id = $vocero_id
+     AND estado = 'ocupado'
      AND fecha_inicio > NOW()"
 ))['total'];
 
-$stats_finalizados = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion 
-     WHERE usuario_id = $instructor_id 
+$stats_finalizados = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion
+     WHERE usuario_id = $vocero_id
      AND estado = 'finalizado'"
 ))['total'];
 
-$stats_cancelados = mysqli_fetch_assoc(mysqli_query($con, 
-    "SELECT COUNT(*) as total FROM historial_ocupacion 
-     WHERE usuario_id = $instructor_id 
+$stats_cancelados = mysqli_fetch_assoc(mysqli_query($con,
+    "SELECT COUNT(*) as total FROM historial_ocupacion
+     WHERE usuario_id = $vocero_id
      AND estado = 'cancelado'"
 ))['total'];
 
@@ -98,7 +98,7 @@ $msg = $_GET['msg'] ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../../assets/css/dashboard_instructor.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <title>Mis Ocupaciones - SAGA</title>
+    <title>Mis Ocupaciones - Vocero - SAGA</title>
 </head>
 <body>
     <!-- Header -->
@@ -113,8 +113,8 @@ $msg = $_GET['msg'] ?? '';
 
         <div class="header-info">
             <div class="usuario-info">
-                <span class="usuario-nombre"><?php echo $instructor_nombre; ?></span>
-                <span class="usuario-tipo">Instructor</span>
+                <span class="usuario-nombre"><?php echo $vocero_nombre; ?></span>
+                <span class="usuario-tipo">Vocero</span>
             </div>
             <a class="btn-logout" href="../../controllers/logout.php">
                 <i class="bi bi-box-arrow-right"></i>
@@ -127,13 +127,13 @@ $msg = $_GET['msg'] ?? '';
     <div class="modal-menu" id="modalMenu">
         <div class="sidebar">
             <h3 class="menu-titulo">PRINCIPAL</h3>
-            <a href="dashboard_instructor.php" <?php echo $pagina_actual == 'dashboard_instructor.php' ? 'class="active"' : ''; ?>>
+            <a href="dashboard_vocero.php" <?php echo $pagina_actual == 'dashboard_vocero.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-bar-chart-fill"></i>Dashboard
             </a>
-            <a href="calendario_instructor.php" <?php echo $pagina_actual == 'calendario_instructor.php' ? 'class="active"' : ''; ?>>
+            <a href="calendario_vocero.php" <?php echo $pagina_actual == 'calendario_vocero.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-calendar3"></i>Calendario
             </a>
-            <a href="mis_ocupaciones_instructor.php" <?php echo $pagina_actual == 'mis_ocupaciones_instructor.php' ? 'class="active"' : ''; ?>>
+            <a href="mis_ocupaciones_vocero.php" <?php echo $pagina_actual == 'mis_ocupaciones_vocero.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-clock-history"></i>Mis Ocupaciones
             </a>
         </div>
@@ -191,23 +191,23 @@ $msg = $_GET['msg'] ?? '';
 
     <!-- Filtros -->
     <div class="filtros-ocupaciones">
-        <a href="mis_ocupaciones_instructor.php?filtro=todos" 
+        <a href="mis_ocupaciones_vocero.php?filtro=todos"
            class="filtro-btn <?php echo $filtro == 'todos' ? 'active' : ''; ?>">
             📊 Todos (<?php echo $stats_total; ?>)
         </a>
-        <a href="mis_ocupaciones_instructor.php?filtro=activos" 
+        <a href="mis_ocupaciones_vocero.php?filtro=activos"
            class="filtro-btn <?php echo $filtro == 'activos' ? 'active' : ''; ?>">
             <i class="bi bi-circle-fill text-danger" style="font-size:.7rem"></i> Activos (<?php echo $stats_activos; ?>)
         </a>
-        <a href="mis_ocupaciones_instructor.php?filtro=proximos" 
+        <a href="mis_ocupaciones_vocero.php?filtro=proximos"
            class="filtro-btn <?php echo $filtro == 'proximos' ? 'active' : ''; ?>">
             <i class="bi bi-circle-fill text-warning" style="font-size:.7rem"></i> Próximos (<?php echo $stats_proximos; ?>)
         </a>
-        <a href="mis_ocupaciones_instructor.php?filtro=finalizados" 
+        <a href="mis_ocupaciones_vocero.php?filtro=finalizados"
            class="filtro-btn <?php echo $filtro == 'finalizados' ? 'active' : ''; ?>">
             <i class="bi bi-circle-fill text-success" style="font-size:.7rem"></i> Finalizados (<?php echo $stats_finalizados; ?>)
         </a>
-        <a href="mis_ocupaciones_instructor.php?filtro=cancelados" 
+        <a href="mis_ocupaciones_vocero.php?filtro=cancelados"
            class="filtro-btn <?php echo $filtro == 'cancelados' ? 'active' : ''; ?>">
             ⚫ Cancelados (<?php echo $stats_cancelados; ?>)
         </a>
@@ -221,14 +221,14 @@ $msg = $_GET['msg'] ?? '';
 
         <?php if($total_registros > 0): ?>
             <div class="ocupaciones-lista">
-                <?php 
+                <?php
                 mysqli_data_seek($ocupaciones, 0);
-                while($ocu = mysqli_fetch_assoc($ocupaciones)): 
+                while($ocu = mysqli_fetch_assoc($ocupaciones)):
                     // Determinar estado
                     $ahora = new DateTime();
                     $fecha_inicio = new DateTime($ocu['fecha_inicio']);
                     $fecha_fin = new DateTime($ocu['fecha_fin']);
-                    
+
                     if($ocu['estado'] == 'cancelado') {
                         $estado_clase = 'cancelado';
                         $estado_texto = 'Cancelado';
@@ -267,7 +267,7 @@ $msg = $_GET['msg'] ?? '';
                                 📍 <?php echo $ocu['sede_nombre']; ?> - <?php echo $ocu['piso_nombre']; ?>
                             </p>
                             <p class="ocupacion-horario">
-                                🕐 <?php echo $hora_inicio; ?> - <?php echo $hora_fin; ?> 
+                                🕐 <?php echo $hora_inicio; ?> - <?php echo $hora_fin; ?>
                                 (<?php echo ucfirst($ocu['jornada']); ?>)
                             </p>
                             <?php if(!empty($ocu['observaciones'])): ?>
@@ -301,7 +301,7 @@ $msg = $_GET['msg'] ?? '';
                 <div class="vacio-icono">📋</div>
                 <h3>No hay ocupaciones registradas</h3>
                 <p>
-                    <?php 
+                    <?php
                     if($filtro == 'activos') echo 'No tienes ocupaciones activas en este momento';
                     elseif($filtro == 'proximos') echo 'No tienes ocupaciones próximas programadas';
                     elseif($filtro == 'finalizados') echo 'Aún no tienes ocupaciones finalizadas';
@@ -309,7 +309,7 @@ $msg = $_GET['msg'] ?? '';
                     else echo 'Registra tu primera ocupación en el calendario';
                     ?>
                 </p>
-                <a href="calendario_instructor.php" class="btn-agendar">
+                <a href="calendario_vocero.php" class="btn-agendar">
                     <i class="bi bi-calendar-event"></i> Ir al Calendario
                 </a>
             </div>

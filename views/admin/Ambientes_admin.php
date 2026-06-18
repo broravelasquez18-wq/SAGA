@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 // Verificar sesión de admin
@@ -29,10 +29,20 @@ if(mysqli_num_rows($sede_query) > 0) {
     exit();
 }
 
-// ⭐ OBTENER AMBIENTES FILTRADOS POR SEDE
-$query = "SELECT a.*, p.nombre as piso_nombre, p.descripcion as piso_descripcion
-          FROM ambientes a 
-          INNER JOIN pisos p ON a.piso_id = p.id 
+// ⭐ OBTENER AMBIENTES FILTRADOS POR SEDE (estado calculado desde historial_ocupacion de HOY)
+$query = "SELECT a.id, a.nombre, a.descripcion, a.piso_id,
+          p.nombre as piso_nombre, p.descripcion as piso_descripcion,
+          CASE
+              WHEN EXISTS (
+                  SELECT 1 FROM historial_ocupacion ho
+                  WHERE ho.ambiente_id = a.id
+                  AND ho.estado IN ('ocupado', 'proximo_a_desocupar')
+                  AND DATE(ho.fecha_inicio) = CURDATE()
+              ) THEN 'ocupado'
+              ELSE 'disponible'
+          END AS estado
+          FROM ambientes a
+          INNER JOIN pisos p ON a.piso_id = p.id
           WHERE p.sede_id = $sede_id
           ORDER BY p.nombre ASC, a.nombre ASC";
 
@@ -51,10 +61,16 @@ $stats_total = mysqli_fetch_assoc(mysqli_query($con,"
 "))['total'];
 
 $stats_ocupados = mysqli_fetch_assoc(mysqli_query($con,"
-    SELECT COUNT(*) total 
+    SELECT COUNT(DISTINCT a.id) total
     FROM ambientes a
     JOIN pisos p ON a.piso_id = p.id
-    WHERE a.estado='ocupado' AND p.sede_id = $sede_id
+    WHERE p.sede_id = $sede_id
+    AND EXISTS (
+        SELECT 1 FROM historial_ocupacion ho
+        WHERE ho.ambiente_id = a.id
+        AND ho.estado IN ('ocupado','proximo_a_desocupar')
+        AND DATE(ho.fecha_inicio) = CURDATE()
+    )
 "))['total'];
 
 $stats_disponibles = $stats_total - $stats_ocupados;
@@ -81,6 +97,24 @@ $stats_pisos = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total FROM 
         .usuario-nombre { font-size:15px; font-weight:700; color:var(--azul-oscuro); }
         .usuario-tipo { font-size:13px; font-weight:600; color:var(--verde-acento); }
         .btn-logout { padding:12px !important; width:46px; height:46px; justify-content:center; }
+
+        /* Info de ocupación en tarjeta */
+        .card-ocupacion-info { margin-top:10px; padding-top:10px; border-top:1px solid #f0f0f0; display:flex; flex-direction:column; gap:8px; }
+        .ocup-mini-info { display:flex; flex-direction:column; gap:3px; }
+        .ocup-mini-info span { font-size:12px; color:#555; display:flex; align-items:center; gap:5px; }
+        .ocup-mini-info i { color:#e74c3c; }
+        .btn-ver-ocupacion {
+            display:inline-flex; align-items:center; gap:6px;
+            background:#e74c3c; color:#fff; border:none; border-radius:8px;
+            padding:7px 12px; font-size:12px; font-weight:600; cursor:pointer;
+            text-decoration:none; transition:background .2s;
+            justify-content:center;
+        }
+        .btn-ver-ocupacion:hover { background:#c0392b; color:#fff; }
+
+        /* Botón ojo en tabla */
+        .btn-accion-tabla.ver-ocup { background:#fdecea; color:#e74c3c; }
+        .btn-accion-tabla.ver-ocup:hover { background:#e74c3c; color:#fff; }
     </style>
 </head>
 <body>
@@ -130,6 +164,9 @@ $stats_pisos = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total FROM 
             </a>
             <a href="instructores_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'instructores_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-person-workspace"></i>Instructores
+            </a>
+            <a href="voceros_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'voceros_admin.php' ? 'class="active"' : ''; ?>>
+                <i class="bi bi-megaphone-fill"></i>Voceros
             </a>
             <a href="ocupaciones_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'ocupaciones_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-calendar-check"></i>Ocupaciones
@@ -282,12 +319,30 @@ $stats_pisos = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total FROM 
                     $estado_clase = $ambiente['estado'] == 'ocupado' ? 'ocupado' : 'disponible';
                     $estado_texto = $ambiente['estado'] == 'ocupado' ? 'Ocupado' : 'Disponible';
                     $estado_icono = $ambiente['estado'] == 'ocupado' ? '<i class="bi bi-circle-fill text-danger" style="font-size:.7rem"></i>' : '<i class="bi bi-circle-fill text-success" style="font-size:.7rem"></i>';
+
+                    // Consultar info de ocupación activa de HOY solo si el ambiente está ocupado
+                    $ocup_info = null;
+                    if($ambiente['estado'] == 'ocupado') {
+                        $ocup_q = mysqli_query($con,
+                            "SELECT ho.id, ho.fecha_inicio, ho.fecha_fin, ho.jornada,
+                                    CONCAT(u.nombre, ' ', u.apellido) AS instructor_nombre
+                             FROM historial_ocupacion ho
+                             LEFT JOIN usuarios u ON ho.usuario_id = u.id
+                             WHERE ho.ambiente_id = {$ambiente['id']}
+                               AND ho.estado IN ('ocupado', 'proximo_a_desocupar')
+                               AND DATE(ho.fecha_inicio) = CURDATE()
+                             ORDER BY ho.fecha_inicio ASC
+                             LIMIT 1");
+                        if($ocup_q && mysqli_num_rows($ocup_q) > 0) {
+                            $ocup_info = mysqli_fetch_assoc($ocup_q);
+                        }
+                    }
             ?>
-                <div class="ambiente-card <?php echo $estado_clase; ?>" 
+                <div class="ambiente-card <?php echo $estado_clase; ?>"
                      data-nombre="<?php echo strtolower($ambiente['nombre']); ?>"
                      data-piso="<?php echo strtolower($ambiente['piso_nombre']); ?>"
                      data-estado="<?php echo $ambiente['estado']; ?>">
-                    
+
                     <div class="card-header">
                         <div class="estado-badge <?php echo $estado_clase; ?>">
                             <?php echo $estado_icono; ?> <?php echo $estado_texto; ?>
@@ -305,6 +360,23 @@ $stats_pisos = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total FROM 
                         <div class="ambiente-piso">
                             <span class="piso-tag"><i class="bi bi-building"></i> <?php echo $ambiente['piso_nombre']; ?></span>
                         </div>
+                        <?php if($ambiente['estado'] == 'ocupado'): ?>
+                        <div class="card-ocupacion-info">
+                            <?php if($ocup_info): ?>
+                            <div class="ocup-mini-info">
+                                <span><i class="bi bi-person-fill"></i> <?php echo htmlspecialchars($ocup_info['instructor_nombre']); ?></span>
+                                <span><i class="bi bi-clock"></i> <?php echo date('H:i', strtotime($ocup_info['fecha_inicio'])); ?> - <?php echo date('H:i', strtotime($ocup_info['fecha_fin'])); ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <?php
+                                $url_ocup = "ocupaciones_admin.php?sede_id={$sede_id}";
+                                if($ocup_info) $url_ocup .= "&resaltar={$ocup_info['id']}";
+                            ?>
+                            <a href="<?php echo $url_ocup; ?>" class="btn-ver-ocupacion">
+                                <i class="bi bi-eye-fill"></i> Ver ocupación
+                            </a>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php 
@@ -345,6 +417,18 @@ $stats_pisos = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total FROM 
                             $estado_clase = $ambiente['estado'] == 'ocupado' ? 'ocupado' : 'disponible';
                             $estado_texto = $ambiente['estado'] == 'ocupado' ? 'Ocupado' : 'Disponible';
                             $estado_icono = $ambiente['estado'] == 'ocupado' ? '<i class="bi bi-circle-fill text-danger" style="font-size:.7rem"></i>' : '<i class="bi bi-circle-fill text-success" style="font-size:.7rem"></i>';
+
+                            $ocup_id_tabla = null;
+                            if($ambiente['estado'] == 'ocupado') {
+                                $oq = mysqli_query($con,
+                                    "SELECT id FROM historial_ocupacion
+                                     WHERE ambiente_id = {$ambiente['id']}
+                                       AND estado IN ('ocupado', 'proximo_a_desocupar')
+                                       AND DATE(fecha_inicio) = CURDATE()
+                                     ORDER BY fecha_inicio ASC LIMIT 1");
+                                if($oq && mysqli_num_rows($oq) > 0)
+                                    $ocup_id_tabla = mysqli_fetch_assoc($oq)['id'];
+                            }
                     ?>
                         <tr data-nombre="<?php echo strtolower($ambiente['nombre']); ?>"
                             data-piso="<?php echo strtolower($ambiente['piso_nombre']); ?>"
@@ -365,6 +449,16 @@ $stats_pisos = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total FROM 
                                 <div class="tabla-acciones">
                                     <button class="btn-accion-tabla edit" onclick="editar(<?php echo $ambiente['id']; ?>)"><i class="bi bi-pencil"></i></button>
                                     <button class="btn-accion-tabla delete" onclick="eliminar(<?php echo $ambiente['id']; ?>, '<?php echo addslashes($ambiente['nombre']); ?>', <?php echo $ambiente['piso_id']; ?>)"><i class="bi bi-trash"></i></button>
+                                    <?php if($ambiente['estado'] == 'ocupado'): ?>
+                                    <?php
+                                        $url_ocup_t = "ocupaciones_admin.php?sede_id={$sede_id}";
+                                        if($ocup_id_tabla) $url_ocup_t .= "&resaltar={$ocup_id_tabla}";
+                                    ?>
+                                    <a href="<?php echo $url_ocup_t; ?>"
+                                       class="btn-accion-tabla ver-ocup" title="Ver ocupación">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </a>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -413,13 +507,7 @@ $stats_pisos = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total FROM 
                     <textarea name="descripcion" id="ambienteDescripcion" rows="4" placeholder="Describe el ambiente..." required></textarea>
                 </div>
 
-                <div class="form-grupo">
-                    <label>Estado *</label>
-                    <select name="estado" id="ambienteEstado" required>
-                        <option value="disponible">Disponible</option>
-                        <option value="ocupado">Ocupado</option>
-                    </select>
-                </div>
+                <input type="hidden" name="estado" id="ambienteEstado" value="disponible">
 
                 <div class="form-botones">
                     <button type="button" class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>

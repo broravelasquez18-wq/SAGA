@@ -135,6 +135,9 @@ $ocupaciones_activas = mysqli_fetch_assoc(mysqli_query($con,"
             <a href="instructores_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'instructores_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-person-workspace"></i>Instructores
             </a>
+            <a href="voceros_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'voceros_admin.php' ? 'class="active"' : ''; ?>>
+                <i class="bi bi-megaphone-fill"></i>Voceros
+            </a>
             <a href="ocupaciones_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'ocupaciones_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-calendar-check"></i>Ocupaciones
             </a>
@@ -261,6 +264,10 @@ $ocupaciones_activas = mysqli_fetch_assoc(mysqli_query($con,"
                 <i class="bi bi-person-plus-fill"></i>
                 <p>Agregar nuevo Instructor</p>
             </div>
+            <div class="accion" id="abrirModalVocero">
+                <i class="bi bi-megaphone-fill"></i>
+                <p>Agregar nuevo Vocero</p>
+            </div>
         </div>
     </div>
 
@@ -286,6 +293,9 @@ $ocupaciones_activas = mysqli_fetch_assoc(mysqli_query($con,"
                 <label>Email *</label>
                 <input type="email" name="email" required placeholder="ejemplo@correo.com">
                 
+                <label>Teléfono / Celular</label>
+                <input type="tel" name="telefono" placeholder="Ej: 3001234567">
+
                 <label>Nivel de Estudio *</label>
                 <select name="nivel_estudio" required>
                     <option value="">Seleccione...</option>
@@ -296,7 +306,7 @@ $ocupaciones_activas = mysqli_fetch_assoc(mysqli_query($con,"
                     <option value="maestria">Maestría</option>
                     <option value="doctorado">Doctorado</option>
                 </select>
-                
+
                 <label>Contraseña *</label>
                 <input type="password" name="contrasena" required minlength="6">
 
@@ -341,9 +351,12 @@ $ocupaciones_activas = mysqli_fetch_assoc(mysqli_query($con,"
                 <label>Email *</label>
                 <input type="email" name="email" required placeholder="ejemplo@correo.com">
                 
+                <label>Teléfono / Celular</label>
+                <input type="tel" name="telefono" placeholder="Ej: 3001234567">
+
                 <label>Contraseña *</label>
-                <input type="password" name="password" required minlength="6">
-                
+                <input type="password" name="contrasena" required minlength="6">
+
                 <label>Tipo de Contrato *</label>
                 <select name="tipo_contrato" id="tipoContrato" required onchange="toggleFechas()">
                     <option value="">Seleccione...</option>
@@ -391,6 +404,58 @@ $ocupaciones_activas = mysqli_fetch_assoc(mysqli_query($con,"
                     <option value="disponible">Disponible</option>
                     <option value="ocupado">Ocupado</option>
                 </select>
+                <button type="submit">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- nuevo vocero -->
+    <div class="modal" id="modalVocero">
+        <div class="modal-content">
+            <span class="cerrar" id="cerrarModalVocero"><i class="bi bi-x-lg"></i></span>
+            <h2>Registrar Vocero</h2>
+            <form action="../../controllers/CrearVocero.php" method="POST">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="accion" value="crear">
+                <input type="hidden" name="sede_id" value="<?php echo $sede_id; ?>">
+
+                <label>Cédula *</label>
+                <input type="text" name="cedula" required>
+
+                <label>Nombre *</label>
+                <input type="text" name="nombre" required>
+
+                <label>Apellido *</label>
+                <input type="text" name="apellido" required>
+
+                <label>Email *</label>
+                <input type="email" name="email" required placeholder="ejemplo@correo.com">
+
+                <label>Teléfono / Celular</label>
+                <input type="tel" name="telefono" placeholder="Ej: 3001234567">
+
+                <label>Contraseña *</label>
+                <input type="password" name="contrasena" required minlength="6">
+
+                <label>Programa de Estudio *</label>
+                <input type="text" name="programa_estudio" placeholder="Ej: Análisis y Desarrollo de Software" required>
+
+                <label>Nivel de Estudio *</label>
+                <select name="nivel_estudio" id="nivelVoceroDash" required onchange="toggleFechasVocero()">
+                    <option value="">Seleccione...</option>
+                    <option value="tecnico">Técnico</option>
+                    <option value="tecnologo">Tecnólogo</option>
+                    <option value="complementario">Complementario</option>
+                </select>
+
+                <div id="fechasVoceroDash" style="display:none;">
+                    <label>Fecha de Inicio *</label>
+                    <input type="date" name="fecha_inicio_contrato" id="fechaInicioVoceroDash" onchange="autoFechaFinVocero()">
+                    <label>Fecha de Fin *</label>
+                    <input type="date" name="fecha_fin_contrato" id="fechaFinVoceroDash">
+                    <small id="ayudaFechaFinVocero" style="color:#666;display:none;"></small>
+                </div>
+
                 <button type="submit">Guardar</button>
             </form>
         </div>
@@ -541,6 +606,55 @@ $ocupaciones_activas = mysqli_fetch_assoc(mysqli_query($con,"
             modalInstructor.style.display = "none";
         }
     });
+
+    const abrirVocero  = document.getElementById("abrirModalVocero");
+    const modalVocero  = document.getElementById("modalVocero");
+    const cerrarVocero = document.getElementById("cerrarModalVocero");
+
+    abrirVocero.onclick  = () => modalVocero.style.display  = "flex";
+    cerrarVocero.onclick = () => modalVocero.style.display  = "none";
+    window.addEventListener("click", e => { if(e.target == modalVocero) modalVocero.style.display = "none"; });
+
+    function toggleFechasVocero() {
+        const nivel     = document.getElementById('nivelVoceroDash').value;
+        const fechasDiv = document.getElementById('fechasVoceroDash');
+        const inputFin  = document.getElementById('fechaFinVoceroDash');
+        const ayuda     = document.getElementById('ayudaFechaFinVocero');
+
+        if(!nivel) {
+            fechasDiv.style.display = 'none';
+            return;
+        }
+        fechasDiv.style.display = 'block';
+        document.getElementById('fechaInicioVoceroDash').required = true;
+        inputFin.required = true;
+
+        if(nivel === 'tecnico') {
+            inputFin.readOnly = true;
+            inputFin.style.background = '#f0f0f0';
+            ayuda.textContent = 'Se calcula automáticamente: 1 año';
+            ayuda.style.display = 'block';
+        } else if(nivel === 'tecnologo') {
+            inputFin.readOnly = true;
+            inputFin.style.background = '#f0f0f0';
+            ayuda.textContent = 'Se calcula automáticamente: 2 años';
+            ayuda.style.display = 'block';
+        } else {
+            inputFin.readOnly = false;
+            inputFin.style.background = '';
+            ayuda.style.display = 'none';
+        }
+        autoFechaFinVocero();
+    }
+
+    function autoFechaFinVocero() {
+        const nivel  = document.getElementById('nivelVoceroDash').value;
+        const inicio = document.getElementById('fechaInicioVoceroDash').value;
+        if(!inicio) return;
+        const fecha = new Date(inicio + 'T00:00:00');
+        if(nivel === 'tecnico')   { fecha.setFullYear(fecha.getFullYear() + 1); document.getElementById('fechaFinVoceroDash').value = fecha.toISOString().slice(0,10); }
+        if(nivel === 'tecnologo') { fecha.setFullYear(fecha.getFullYear() + 2); document.getElementById('fechaFinVoceroDash').value = fecha.toISOString().slice(0,10); }
+    }
     </script>
 </body>
 </html>

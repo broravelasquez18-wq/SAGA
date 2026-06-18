@@ -1,6 +1,9 @@
 <?php
 session_start();
 require_once "../config/conexion.php";
+require_once "../config/sms.php";
+require_once "../config/csrf.php";
+require_once "../config/sendgrid.php";
 
 $con = conexion();
 
@@ -10,10 +13,17 @@ if(!isset($_SESSION['id']) || $_SESSION['rol'] != 'instructor') {
     exit();
 }
 
+if($_SERVER['REQUEST_METHOD'] != 'POST') {
+    header("Location: ../views/instructor/calendario_instructor.php");
+    exit();
+}
+
+csrf_validate();
+
 $instructor_id = $_SESSION['id'];
-$ocupacion_id  = intval($_GET['id'] ?? 0);
-$mes           = isset($_GET['mes'])  ? intval($_GET['mes'])  : date('n');
-$anio          = isset($_GET['anio']) ? intval($_GET['anio']) : date('Y');
+$ocupacion_id  = intval($_POST['id'] ?? 0);
+$mes           = isset($_POST['mes'])  ? intval($_POST['mes'])  : date('n');
+$anio          = isset($_POST['anio']) ? intval($_POST['anio']) : date('Y');
 
 $ruta_base = "../views/instructor/calendario_instructor.php";
 $params    = "?mes=$mes&anio=$anio";
@@ -23,10 +33,15 @@ if($ocupacion_id <= 0) {
     exit();
 }
 
-// Obtener la ocupación y verificar que pertenezca al instructor
+// Obtener la ocupación con datos del instructor y ambiente para el SMS
 $result = mysqli_query($con,
-    "SELECT ho.id, ho.ambiente_id, ho.fecha_inicio, ho.fecha_fin, ho.estado
+    "SELECT ho.id, ho.ambiente_id, ho.fecha_inicio, ho.fecha_fin, ho.estado,
+            a.nombre AS ambiente_nombre,
+            u.nombre AS instructor_nombre, u.apellido AS instructor_apellido,
+            u.telefono AS instructor_telefono, u.email AS instructor_email
      FROM historial_ocupacion ho
+     LEFT JOIN ambientes a ON ho.ambiente_id = a.id
+     LEFT JOIN usuarios u ON ho.usuario_id = u.id
      WHERE ho.id = $ocupacion_id
        AND ho.usuario_id = $instructor_id
        AND ho.estado IN ('ocupado', 'proximo_a_desocupar')"
@@ -37,9 +52,15 @@ if(mysqli_num_rows($result) == 0) {
     exit();
 }
 
-$ocupacion   = mysqli_fetch_assoc($result);
-$ambiente_id = $ocupacion['ambiente_id'];
+$ocupacion            = mysqli_fetch_assoc($result);
+$ambiente_id          = $ocupacion['ambiente_id'];
 $fecha_fin_programada = $ocupacion['fecha_fin'];
+$instructor_telefono  = $ocupacion['instructor_telefono']  ?? '';
+$instructor_email     = $ocupacion['instructor_email']     ?? '';
+$ambiente_nombre      = $ocupacion['ambiente_nombre']      ?? '';
+$instructor_nombre_s  = $ocupacion['instructor_nombre']    ?? '';
+$instructor_apellido_s= $ocupacion['instructor_apellido']  ?? '';
+$instructor_nombre    = trim("$instructor_nombre_s $instructor_apellido_s");
 
 // Calcular fecha_fin real
 $ahora = date('Y-m-d H:i:s');
@@ -63,6 +84,23 @@ if(mysqli_query($con, $update)) {
 
     if($otras['total'] == 0) {
         mysqli_query($con, "UPDATE ambientes SET estado = 'disponible' WHERE id = $ambiente_id");
+    }
+
+    // Notificar por SMS y email
+    if(!empty($instructor_telefono)) {
+        $hora_fin_real = date('H:i', strtotime($nueva_fecha_fin));
+        $fecha_fmt     = date('d/m/Y', strtotime($nueva_fecha_fin));
+        $numero        = '+57' . preg_replace('/\D/', '', $instructor_telefono);
+        $mensaje       = "SAGA: Hola $instructor_nombre, tu ocupacion del ambiente \"$ambiente_nombre\" fue finalizada el $fecha_fmt a las $hora_fin_real.";
+        enviarSMS($numero, $mensaje);
+    }
+    if(!empty($instructor_email)) {
+        enviarEmail(
+            $instructor_email,
+            $instructor_nombre,
+            'Ocupación finalizada - SAGA',
+            emailOcupacionFinalizada($instructor_nombre_s, $instructor_apellido_s, $ambiente_nombre, $nueva_fecha_fin)
+        );
     }
 
     header("Location: $ruta_base{$params}&msg=finalizado");

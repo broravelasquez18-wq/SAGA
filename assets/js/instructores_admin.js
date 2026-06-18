@@ -31,6 +31,7 @@ function abrirModal() {
     document.getElementById('instructorApellido').value = '';
     document.getElementById('instructorCedula').value = '';
     document.getElementById('instructorEmail').value = '';
+    document.getElementById('instructorTelefono').value = '';
     document.getElementById('instructorEstudio').value = '';
     document.getElementById('instructorContrasena').value = '';
     document.getElementById('instructorContrato').value = '';
@@ -63,6 +64,7 @@ function editar(id) {
                 document.getElementById('instructorApellido').value = data.instructor.apellido;
                 document.getElementById('instructorCedula').value = data.instructor.cedula;
                 document.getElementById('instructorEmail').value = data.instructor.email;
+                document.getElementById('instructorTelefono').value = data.instructor.telefono ?? '';
                 document.getElementById('instructorEstudio').value = data.instructor.nivel_estudio;
                 document.getElementById('instructorContrato').value = data.instructor.tipo_contrato;
                 

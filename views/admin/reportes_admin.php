@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 // Verificar sesión de admin
@@ -121,6 +121,9 @@ $total_inactivos = $instructores_inactivos + $celadores_inactivos;
             </a>
             <a href="instructores_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'instructores_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-person-workspace"></i>Instructores
+            </a>
+            <a href="voceros_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'voceros_admin.php' ? 'class="active"' : ''; ?>>
+                <i class="bi bi-megaphone-fill"></i>Voceros
             </a>
             <a href="ocupaciones_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'ocupaciones_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-calendar-check"></i>Ocupaciones

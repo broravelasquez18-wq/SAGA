@@ -112,6 +112,9 @@ $stats_por_vencer = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total 
             <a href="instructores_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'instructores_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-person-workspace"></i>Instructores
             </a>
+            <a href="voceros_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'voceros_admin.php' ? 'class="active"' : ''; ?>>
+                <i class="bi bi-megaphone-fill"></i>Voceros
+            </a>
             <a href="ocupaciones_admin.php?sede_id=<?php echo $sede_id; ?>" <?php echo $pagina_actual == 'ocupaciones_admin.php' ? 'class="active"' : ''; ?>>
                 <i class="bi bi-calendar-check"></i>Ocupaciones
             </a>
@@ -438,6 +441,12 @@ $stats_por_vencer = mysqli_fetch_assoc(mysqli_query($con,"SELECT COUNT(*) total 
                     <div class="form-grupo">
                         <label>Email *</label>
                         <input type="email" name="email" id="instructorEmail" placeholder="ejemplo@correo.com" required>
+                    </div>
+
+                    <div class="form-grupo">
+                        <label>Teléfono / Celular</label>
+                        <input type="tel" name="telefono" id="instructorTelefono" placeholder="Ej: 3001234567">
+                        <small class="form-ayuda">Requerido para notificaciones SMS. Sin prefijo +57.</small>
                     </div>
 
                     <div class="form-grupo">
