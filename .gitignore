@@ -1,7 +1,6 @@
-# Credenciales y configuración sensible
-config/sendgrid.php
+# Credenciales y configuración sensible (ahora las cargan desde .env / vars de entorno)
 config/sendgrid_hosting.php
-config/sms.php
+.env
 
 # Claude Code
 .claude/
